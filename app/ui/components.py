@@ -615,7 +615,7 @@ def render_property_card(match: PropertyMatch, key: str = ""):
             city = _safe_text(p.city)
 
             st.markdown(
-                f'<div class="property-location-native">📍 {location}, {city}</div>',
+                f'<div class="property-location-native">{location}, {city}</div>',
                 unsafe_allow_html=True,
             )
 
@@ -663,7 +663,7 @@ def render_property_card(match: PropertyMatch, key: str = ""):
 
             if p.amenities:
                 badges = "".join(
-                    f'<span class="feature-badge">✦ {_safe_text(a)}</span>'
+                    f'<span class="feature-badge">{_safe_text(a)}</span>'
                     for a in p.amenities[:5]
                 )
                 st.markdown(
@@ -690,7 +690,7 @@ def render_property_details(match: PropertyMatch):
         <div class="detail-panel">
             <div class="detail-title">{_safe_text(p.title)}</div>
             <div class="detail-location">
-                📍 {_safe_text(p.locality or p.location)}, {_safe_text(p.city)},
+                {_safe_text(p.locality or p.location)}, {_safe_text(p.city)},
                 {_safe_text(p.state)} · {_safe_text(p.pincode)}
             </div>
         </div>
@@ -711,10 +711,10 @@ def render_property_details(match: PropertyMatch):
 
     if match.match_reasons:
         for reason in match.match_reasons:
-            st.markdown(f"✓ **{reason}**")
+            st.markdown(f"**[Match]** {reason}")
     else:
         st.markdown(
-            "✓ Matched using semantic similarity and structured property criteria."
+            "**[Match]** Matched using semantic similarity and structured property criteria."
         )
 
     st.divider()

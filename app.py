@@ -4,6 +4,7 @@ Professional Streamlit application entrypoint.
 """
 
 import os
+import textwrap
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -29,7 +30,7 @@ from app.ui.components import (
 
 st.set_page_config(
     page_title="EstateRAG AI | Property Intelligence",
-    page_icon="🏠",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -86,7 +87,7 @@ def sidebar_brand(summary, loader):
                 color:#f8fafc;
                 letter-spacing:-.04em;
             ">
-                🏠 Estate<span style="color:#60a5fa;">RAG</span> AI
+                Estate<span style="color:#60a5fa;">RAG</span> AI
             </div>
             <div style="
                 color:#64748b;
@@ -132,12 +133,12 @@ def sidebar_brand(summary, loader):
     nav_option = st.sidebar.radio(
         "Navigation",
         [
-            "🔍 AI Property Search",
-            "📊 Property Dashboard",
-            "⚖️ Property Comparison",
-            "💡 AI Recommendations",
-            "⚙️ Admin Management",
-            "ℹ️ Architecture & About",
+            "AI Property Search",
+            "Property Dashboard",
+            "Property Comparison",
+            "AI Recommendations",
+            "Admin Management",
+            "Architecture & About",
         ],
         label_visibility="collapsed",
     )
@@ -156,8 +157,8 @@ def sidebar_brand(summary, loader):
     s2.metric("Cities", len(summary.cities))
 
     st.sidebar.caption(
-        f"🗺️ {localities} localities  •  "
-        f"⚡ FAISS 384-d"
+        f"{localities} Localities  ·  "
+        f"FAISS 384-d"
     )
 
     return nav_option
@@ -167,16 +168,16 @@ def render_search_hero():
     st.markdown(
         """
         <section class="estate-hero">
-            <div class="hero-kicker">AI-POWERED PROPERTY INTELLIGENCE</div>
+            <div class="hero-kicker">AI-POWERED PROPERTY DISCOVERY</div>
             <div class="hero-title">
-                <h1>Discover Properties That Match Your Lifestyle.</h1>
+                <h1>Find the Right Property Using Grounded AI.</h1>
             </div>
             <div class="hero-subtitle">
                 <p>
-    Search by location, budget, BHK, area, property type, and preferences.
-    EstateRAG AI combines intelligent filtering with semantic retrieval
-    to deliver relevant, dataset-grounded property results.
-</p>
+                    Search by location, budget, BHK, carpet area, property type, and preferences.
+                    EstateRAG AI combines intelligent filtering with semantic retrieval
+                    to deliver relevant, dataset-grounded property results.
+                </p>
             </div>
         </section>
         """,
@@ -197,15 +198,15 @@ def render_search_page(loader, retriever, summary):
     sample_query = None
 
     quick_actions = [
-        ("📍", "Properties in Tirupati", "Show properties in Tirupati"),
-        ("🌳", "Land under ₹50L", "Show land properties in Tirupati under ₹50 lakhs"),
-        ("🏘️", "Near Alipiri", "Properties near Alipiri"),
-        ("🏠", "3 BHK Vijayawada", "3 BHK in Vijayawada"),
-        ("🏡", "Villas Hyderabad", "Villas in Hyderabad"),
+        ("Properties in Tirupati", "Show properties in Tirupati"),
+        ("Land under ₹50L", "Show land properties in Tirupati under ₹50 lakhs"),
+        ("Near Alipiri", "Properties near Alipiri"),
+        ("3 BHK Vijayawada", "3 BHK in Vijayawada"),
+        ("Villas Hyderabad", "Villas in Hyderabad"),
     ]
 
-    for col, (icon, label, query) in zip(quick_cols, quick_actions):
-        if col.button(f"{icon} {label}", use_container_width=True):
+    for col, (label, query) in zip(quick_cols, quick_actions):
+        if col.button(label, use_container_width=True):
             sample_query = query
             reset_search_filters()
 
@@ -220,7 +221,7 @@ def render_search_page(loader, retriever, summary):
         label_visibility="collapsed",
     )
 
-    with st.expander("⚙️ Advanced filters", expanded=False):
+    with st.expander("Refine Your Search", expanded=False):
         f1, f2, f3, f4 = st.columns(4)
 
         city_filter = f1.selectbox(
@@ -357,7 +358,7 @@ def render_search_page(loader, retriever, summary):
             "Hybrid AI",
         )
 
-    st.markdown("### 🤖 AI property brief")
+    st.markdown("### AI property brief")
 
     st.markdown(
         f"""
@@ -378,7 +379,7 @@ def render_search_page(loader, retriever, summary):
         unsafe_allow_html=True,
     )
 
-    with st.expander("🔍 Search intelligence"):
+    with st.expander("Search intelligence"):
         st.json(
             {
                 "User Query": active_query,
@@ -417,25 +418,68 @@ def render_search_page(loader, retriever, summary):
         )
 
     st.markdown(
-        f"### 🏠 Property results "
-        f"<span style='color:#64748b;font-size:.85rem;'>"
-        f"{len(matches)} matching listings</span>",
+        f"### Property search results "
+        f"<span style='color:#38bdf8;font-size:.9rem;font-weight:700;margin-left:8px;'>"
+        f"{len(matches)} matching listing{'s' if len(matches) != 1 else ''}</span>",
         unsafe_allow_html=True,
     )
 
     if not matches:
-        st.warning(
-            "No matching properties were found for these criteria."
-        )
+        st.info("No properties found matching all your requirements.")
+
+        all_props = loader.load_data()
+        if all_props:
+            min_p = min(p.price_lakhs for p in all_props)
+            min_p_formatted = f"₹{min_p:.1f} Lakhs" if min_p >= 1 else f"₹{int(round(min_p*100000)):,}"
+
+            st.markdown(
+                textwrap.dedent(f"""
+                <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(56,189,248,0.25);padding:18px 22px;border-radius:14px;margin-top:14px;">
+                    <div style="color:#38bdf8;font-weight:700;margin-bottom:6px;">Dataset Search Insight</div>
+                    <div style="color:#cbd5e1;font-size:0.92rem;line-height:1.5;">
+                        No verified listings match all specified hard constraints (Max Budget: {f'₹{parsed_query.max_price_lakhs}L' if parsed_query.max_price_lakhs else 'No Limit'}, City: {parsed_query.city or 'Any'}, Type: {parsed_query.property_type or 'Any'}).
+                        <br><br>
+                        <strong>Suggestion:</strong> The lowest priced listing in our verified dataset starts at <strong>{min_p_formatted}</strong>. Try increasing your budget filter to view available listings.
+                    </div>
+                </div>
+                """).strip(),
+                unsafe_allow_html=True,
+            )
         return
 
-    for index, match in enumerate(matches):
-        render_property_card(match, key=f"search_{index}")
+    # Category-Wise Result Sections
+    apartments = [m for m in matches if m.property_item.property_type.lower() == 'apartment']
+    villas_houses = [m for m in matches if m.property_item.property_type.lower() in ['villa', 'independent house', 'house']]
+    plots_land = [m for m in matches if m.property_item.property_type.lower() in ['land', 'plot']]
+    penthouses_other = [m for m in matches if m.property_item.property_type.lower() in ['penthouse', 'commercial']]
 
-        with st.expander(
-            f"View details · {match.property_item.property_id}"
-        ):
-            render_property_details(match)
+    category_blocks = [
+        ("Apartments", "Apartment", apartments),
+        ("Houses & Villas", "Independent House / Villa", villas_houses),
+        ("Plots & Land", "Land / Residential Plot", plots_land),
+        ("Penthouses & Luxury", "Penthouse / Luxury", penthouses_other),
+    ]
+
+    card_idx = 0
+    for cat_title, cat_subtitle, cat_matches in category_blocks:
+        if cat_matches:
+            st.markdown(
+                textwrap.dedent(f"""
+                <div style="margin-top:24px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(148,163,184,0.15);padding-bottom:8px;">
+                    <div style="font-size:1.18rem;font-weight:800;color:#f8fafc;">
+                        {cat_title} <span style="font-size:0.85rem;color:#38bdf8;font-weight:600;margin-left:8px;">({len(cat_matches)} listing{'s' if len(cat_matches)>1 else ''})</span>
+                    </div>
+                    <div style="font-size:0.78rem;color:#64748b;">Category: {cat_subtitle}</div>
+                </div>
+                """).strip(),
+                unsafe_allow_html=True,
+            )
+
+            for match in cat_matches:
+                render_property_card(match, key=f"search_{card_idx}")
+                with st.expander(f"View details · {match.property_item.property_id}"):
+                    render_property_details(match)
+                card_idx += 1
 
 
 def render_dashboard(loader, summary):
@@ -456,11 +500,11 @@ def render_dashboard(loader, summary):
     cols = st.columns(5)
 
     metrics = [
-        ("Total Properties", str(summary.total_properties), "🏢"),
-        ("Cities Covered", str(len(summary.cities)), "📍"),
-        ("Localities", str(total_localities), "🗺️"),
-        ("Average Price", f"₹{summary.avg_price_lakhs:.1f} L", "💰"),
-        ("Largest Area", f"{summary.max_area_sqft:,} sqft", "📐"),
+        ("Total Properties", str(summary.total_properties), ""),
+        ("Cities Covered", str(len(summary.cities)), ""),
+        ("Localities", str(total_localities), ""),
+        ("Average Price", f"₹{summary.avg_price_lakhs:.1f} L", ""),
+        ("Largest Area", f"{summary.max_area_sqft:,} sqft", ""),
     ]
 
     for col, (label, value, icon) in zip(cols, metrics):
@@ -602,7 +646,7 @@ def render_comparison(properties):
         render_comparison_table(selected_props)
 
     if len(selected_props) >= 2:
-        st.markdown("### 🤖 AI comparison")
+        st.markdown("### AI comparison")
 
         with st.spinner("Analyzing property trade-offs..."):
             analysis = RAGChain.generate_comparison(
@@ -653,7 +697,7 @@ def render_recommendations(retriever):
     )
 
     if st.button(
-        "✨ Generate Recommendations",
+        "Generate Recommendations",
         type="primary",
         use_container_width=True,
     ):
@@ -757,7 +801,7 @@ def render_admin(loader, vec_store, properties, summary):
 
     st.markdown("### Add new property")
 
-    with st.expander("➕ Create listing", expanded=False):
+    with st.expander("Create listing", expanded=False):
         default_auto_id = get_next_property_id(properties)
 
         with st.form("add_property_form"):
@@ -959,7 +1003,7 @@ def render_admin(loader, vec_store, properties, summary):
     st.markdown("### Data maintenance")
 
     if st.button(
-        "🔄 Refresh Dataset & FAISS Index",
+        "Refresh Dataset & FAISS Index",
         use_container_width=True,
     ):
         st.cache_resource.clear()
@@ -968,135 +1012,339 @@ def render_admin(loader, vec_store, properties, summary):
         vec_store.build_index(docs)
 
         st.success(
-            "Dataset and FAISS vector index refreshed successfully."
-        )
-        st.rerun()
+            "Dataset and FAISS vector index refreshed successfudef render_architecture():
+    st.markdown(
+        textwrap.dedent("""
+        <style>
+        .arch-page {
+            padding: 10px 0 40px 0;
+        }
 
+        .arch-hero {
+            padding: 38px 42px;
+            border-radius: 24px;
+            margin-bottom: 28px;
+            background:
+                radial-gradient(circle at 90% 10%, rgba(56,189,248,.18), transparent 30%),
+                radial-gradient(circle at 10% 90%, rgba(99,102,241,.15), transparent 35%),
+                linear-gradient(135deg, #0b1730 0%, #0a1224 55%, #07101d 100%);
+            border: 1px solid rgba(56,189,248,.25);
+            box-shadow: 0 20px 60px rgba(0,0,0,.25);
+        }
 
-def render_architecture():
-    st.markdown("# Platform Architecture")
-    st.caption(
-        "How EstateRAG converts natural-language requirements into grounded property intelligence."
-    )
+        .arch-eyebrow {
+            color: #38bdf8;
+            font-size: .75rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
 
-    architecture = [
-        ("01", "Property Dataset", "CSV property inventory"),
-        ("02", "Data Processing", "Validation, normalization and document creation"),
-        ("03", "Embeddings", "SentenceTransformer semantic representation"),
-        ("04", "FAISS Vector Store", "Fast semantic similarity retrieval"),
-        ("05", "Hybrid Retrieval", "Metadata filtering + vector similarity"),
-        ("06", "Top-K Context", "Relevant property records"),
-        ("07", "RAG Generator", "Gemini / Groq / offline grounded engine"),
-        ("08", "Streamlit Experience", "Search, analytics, comparison and recommendations"),
-    ]
+        .arch-title {
+            color: #ffffff;
+            font-size: 2.35rem;
+            font-weight: 900;
+            line-height: 1.15;
+            margin: 0;
+        }
 
-    for number, title, description in architecture:
-        st.markdown(
-            f"""
-            <div style="
-                display:flex;
-                gap:18px;
-                align-items:center;
-                padding:17px 20px;
-                margin:8px 0;
-                border:1px solid rgba(148,163,184,.13);
-                border-radius:14px;
-                background:linear-gradient(90deg,#101a2b,#0d1524);
-            ">
-                <div style="
-                    min-width:40px;
-                    height:40px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:10px;
-                    background:rgba(59,130,246,.12);
-                    color:#60a5fa;
-                    font-weight:850;
-                ">{number}</div>
-                <div>
-                    <div style="color:#f8fafc;font-weight:800;">
-                        {title}
-                    </div>
-                    <div style="color:#64748b;font-size:.82rem;margin-top:3px;">
-                        {description}
-                    </div>
+        .arch-subtitle {
+            color: #94a3b8;
+            font-size: 1rem;
+            line-height: 1.7;
+            max-width: 850px;
+            margin-top: 14px;
+        }
+
+        .flow-wrapper {
+            padding: 28px;
+            border-radius: 22px;
+            background: rgba(10,20,38,.72);
+            border: 1px solid rgba(148,163,184,.15);
+            box-shadow: 0 18px 50px rgba(0,0,0,.20);
+            margin-bottom: 32px;
+        }
+
+        .flow-title {
+            color: #f8fafc;
+            font-size: 1.35rem;
+            font-weight: 850;
+            margin-bottom: 24px;
+        }
+
+        .flow-box {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid rgba(56,189,248,0.35);
+            padding: 14px 20px;
+            border-radius: 12px;
+            text-align: center;
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+        }
+
+        .flow-box-hard {
+            border-color: #ef4444 !important;
+            background: linear-gradient(135deg, rgba(239,68,68,0.15), #0f172a) !important;
+        }
+
+        .flow-box-final {
+            border-color: #10b981 !important;
+            background: linear-gradient(135deg, rgba(16,185,129,0.15), #0f172a) !important;
+        }
+
+        .flow-arrow {
+            text-align: center;
+            color: #38bdf8;
+            font-size: 1.4rem;
+            font-weight: 900;
+            margin: 4px 0;
+        }
+
+        .section-heading {
+            color: #f8fafc;
+            font-size: 1.45rem;
+            font-weight: 850;
+            margin: 30px 0 16px 0;
+        }
+
+        .principle-card {
+            min-height: 170px;
+            padding: 24px;
+            border-radius: 20px;
+            background: linear-gradient(145deg, rgba(17,31,55,.95), rgba(9,19,35,.95));
+            border: 1px solid rgba(148,163,184,.14);
+            box-shadow: 0 12px 35px rgba(0,0,0,.18);
+        }
+
+        .principle-badge {
+            color: #38bdf8;
+            font-size: .72rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .principle-title {
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-weight: 850;
+            margin-bottom: 9px;
+        }
+
+        .principle-text {
+            color: #8190a8;
+            font-size: .82rem;
+            line-height: 1.65;
+        }
+
+        .tech-card {
+            padding: 22px;
+            border-radius: 18px;
+            background: #0b1729;
+            border: 1px solid rgba(148,163,184,.13);
+            min-height: 135px;
+        }
+
+        .tech-tag {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: .70rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .tech-title {
+            color: #f8fafc;
+            font-weight: 800;
+            font-size: .95rem;
+        }
+
+        .tech-text {
+            color: #718096;
+            font-size: .78rem;
+            margin-top: 7px;
+            line-height: 1.5;
+        }
+
+        .about-banner {
+            padding: 32px;
+            border-radius: 22px;
+            margin-top: 30px;
+            background: linear-gradient(135deg, rgba(14,165,233,.12), rgba(99,102,241,.10));
+            border: 1px solid rgba(56,189,248,.20);
+        }
+
+        .about-banner h3 {
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            font-size: 1.35rem;
+            font-weight: 850;
+        }
+
+        .about-banner p {
+            color: #94a3b8;
+            line-height: 1.7;
+            margin: 0;
+            font-size: .92rem;
+        }
+        </style>
+
+        <div class="arch-page">
+            <div class="arch-hero">
+                <div class="arch-eyebrow">EstateRAG AI · System Architecture</div>
+                <div class="arch-title">From Property Data to<br>Grounded Intelligence</div>
+                <div class="arch-subtitle">
+                    EstateRAG AI combines structured property filtering, semantic vector retrieval, and grounded RAG generation to deliver reliable property recommendations without hallucinated listings.
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
-    st.markdown("### Grounding principles")
+            <div class="flow-wrapper">
+                <div class="flow-title">How EstateRAG AI Works</div>
+                <div style="display:flex;flex-direction:column;gap:6px;max-width:700px;margin:0 auto;">
+                    <div class="flow-box">USER QUERY</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-box">QUERY UNDERSTANDING</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-box">BUDGET / LOCATION / TYPE / BEDROOM FILTER</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-box">PROPERTY DATASET</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-box flow-box-hard">HARD CONSTRAINT FILTERING</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-box">SEMANTIC RAG RETRIEVAL</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-box">RELEVANT PROPERTY RESULTS</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-box flow-box-final">GROUNDED AI RESPONSE</div>
+                </div>
+            </div>
+        </div>
+        """).strip(),
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        '<div class="section-heading">Grounding Principles</div>',
+        unsafe_allow_html=True,
+    )
 
     c1, c2, c3 = st.columns(3)
 
     cards = [
         (
             c1,
-            "🎯 Strict grounding",
-            "The response generator is instructed to use retrieved property records rather than inventing listing details.",
+            "PRINCIPLE 01",
+            "Strict Grounding",
+            "Responses are based exclusively on retrieved property records instead of inventing listing details or hallucinating prices.",
         ),
         (
             c2,
-            "🔎 Hybrid retrieval",
-            "Structured constraints handle exact requirements while vector search handles semantic preferences.",
+            "PRINCIPLE 02",
+            "Hybrid Retrieval",
+            "Structured metadata constraints handle exact requirements while 384-d vector search handles semantic preferences.",
         ),
         (
             c3,
-            "🛡️ Zero-match handling",
-            "When the dataset has no suitable record, the system reports that instead of fabricating a property.",
+            "PRINCIPLE 03",
+            "Zero-Match Handling",
+            "When no suitable property exists in the dataset, the system clearly reports zero matches instead of fabricating a listing.",
         ),
     ]
 
-    for col, title, body in cards:
+    for col, badge, title, body in cards:
         with col:
             st.markdown(
-                f"""
-                <div class="metric-card" style="min-height:180px;">
-                    <div style="font-size:1.35rem;">{title[:2]}</div>
-                    <div style="
-                        color:#f8fafc;
-                        font-size:1rem;
-                        font-weight:800;
-                        margin-top:10px;
-                    ">{title[3:]}</div>
-                    <div style="
-                        color:#64748b;
-                        font-size:.82rem;
-                        line-height:1.6;
-                        margin-top:8px;
-                    ">{body}</div>
+                textwrap.dedent(f"""
+                <div class="principle-card">
+                    <div class="principle-badge">{badge}</div>
+                    <div class="principle-title">{title}</div>
+                    <div class="principle-text">{body}</div>
                 </div>
-                """,
+                """).strip(),
                 unsafe_allow_html=True,
             )
 
+    st.markdown(
+        '<div class="section-heading">Technology Stack</div>',
+        unsafe_allow_html=True,
+    )
+
+    t1, t2, t3, t4, t5, t6, t7 = st.columns(7)
+
+    technologies = [
+        (t1, "CORE", "Python", "Language"),
+        (t2, "UI", "Streamlit", "Interface"),
+        (t3, "VECTOR", "FAISS", "Index Engine"),
+        (t4, "EMBED", "SentenceTrans.", "384-d Vectors"),
+        (t5, "DATA", "Pandas", "Processing"),
+        (t6, "LLM", "Gemini / Groq", "RAG Engine"),
+        (t7, "VIZ", "Plotly", "Analytics"),
+    ]
+
+    for col, tag, title, body in technologies:
+        with col:
+            st.markdown(
+                textwrap.dedent(f"""
+                <div class="tech-card">
+                    <div class="tech-tag">{tag}</div>
+                    <div class="tech-title">{title}</div>
+                    <div class="tech-text">{body}</div>
+                </div>
+                """).strip(),
+                unsafe_allow_html=True,
+            )
+
+    st.markdown(
+        textwrap.dedent("""
+        <div class="about-banner">
+            <h3>About EstateRAG AI</h3>
+            <p>
+                EstateRAG AI is an AI-powered property intelligence platform designed
+                to make property discovery accurate, grounded, and transparent.
+                Users can search naturally using requirements such as
+                location, budget, property type, bedrooms, carpet area, and
+                lifestyle preferences.
+            </p>
+        </div>
+        """).strip(),
+        unsafe_allow_html=True,
+    )
+
 
 def main():
-    loader, vec_store, retriever = init_rag_system()
-    properties = loader.properties
-    summary = loader.get_summary()
+    try:
+        loader, vec_store, retriever = init_rag_system()
+        summary = loader.get_summary()
+        properties = loader.load_data()
 
-    nav_option = sidebar_brand(summary, loader)
+        nav_option = sidebar_brand(summary, loader)
 
-    if nav_option == "🔍 AI Property Search":
-        render_search_page(loader, retriever, summary)
-
-    elif nav_option == "📊 Property Dashboard":
-        render_dashboard(loader, summary)
-
-    elif nav_option == "⚖️ Property Comparison":
-        render_comparison(properties)
-
-    elif nav_option == "💡 AI Recommendations":
-        render_recommendations(retriever)
-
-    elif nav_option == "⚙️ Admin Management":
-        render_admin(loader, vec_store, properties, summary)
-
-    elif nav_option == "ℹ️ Architecture & About":
-        render_architecture()
+        if nav_option == "AI Property Search":
+            render_search_page(loader, retriever, summary)
+        elif nav_option == "Property Dashboard":
+            render_dashboard(loader, summary)
+        elif nav_option == "Property Comparison":
+            render_comparison(properties)
+        elif nav_option == "AI Recommendations":
+            render_recommendations(retriever)
+        elif nav_option == "Admin Management":
+            render_admin(loader, vec_store, properties, summary)
+        elif nav_option == "Architecture & About":
+            render_architecture()
+        else:
+            render_search_page(loader, retriever, summary)
+    except Exception as e:
+        import traceback
+        st.error(f"Application Runtime Error: {e}")
+        st.code(traceback.format_exc())
+        print(f"CRITICAL STREAMLIT ERROR: {e}\n{traceback.format_exc()}")
 
 
 if __name__ == "__main__":

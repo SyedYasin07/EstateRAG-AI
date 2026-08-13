@@ -54,6 +54,9 @@ class PropertyItem(BaseModel):
         if self.price_lakhs >= 100:
             crores = self.price_lakhs / 100.0
             return f"₹{crores:.2f} Cr"
+        elif self.price_lakhs < 1.0 and self.price_lakhs > 0:
+            inr_val = int(round(self.price_lakhs * 100000.0))
+            return f"₹{inr_val:,}"
         return f"₹{self.price_lakhs:.1f} Lakhs"
 
     @property

@@ -131,14 +131,21 @@ class HybridRetriever:
             vec_score = vector_score_map.get(prop.property_id, 0.5)
 
             is_disqualified = False
-            # Budget check
-            if parsed_query.max_price_lakhs and prop.price_lakhs > parsed_query.max_price_lakhs:
+            # Budget checks
+            if parsed_query.max_price_lakhs is not None and prop.price_lakhs > parsed_query.max_price_lakhs:
+                is_disqualified = True
+            if parsed_query.min_price_lakhs is not None and prop.price_lakhs < parsed_query.min_price_lakhs:
                 is_disqualified = True
             # Bedroom check
-            if parsed_query.bedrooms and prop.bedrooms != parsed_query.bedrooms:
+            if parsed_query.bedrooms is not None and prop.bedrooms != parsed_query.bedrooms:
                 is_disqualified = True
             # Property type check
             if parsed_query.property_type and prop.property_type.lower() != parsed_query.property_type.lower():
+                is_disqualified = True
+            # Area check
+            if parsed_query.min_area_sqft is not None and prop.area_sqft < parsed_query.min_area_sqft:
+                is_disqualified = True
+            if parsed_query.max_area_sqft is not None and prop.area_sqft > parsed_query.max_area_sqft:
                 is_disqualified = True
             # Location check across all location fields
             if loc_target:
@@ -155,8 +162,8 @@ class HybridRetriever:
             # Weighted Hybrid Score: 60% Metadata + 40% Vector Similarity
             combined_score = round(0.6 * meta_score + 0.4 * vec_score, 4)
 
-            # Strict filter: Disqualified properties (meta_score=0) are excluded if hard constraints fail
-            if not is_disqualified or (not loc_target and not parsed_query.property_type and not parsed_query.max_price_lakhs and combined_score > 0.45):
+            # Strict filter: Disqualified properties are strictly excluded if hard constraints fail
+            if not is_disqualified:
                 matches.append(
                     PropertyMatch(
                         property_item=prop,

@@ -1,0 +1,11 @@
+[server]
+headless = true
+fileWatcherType = "none"
+folderWatchBlacklist = ["*/transformers/*", "*/torchvision/*"]
+
+[theme]
+primaryColor = "#38bdf8"
+backgroundColor = "#07111f"
+secondaryBackgroundColor = "#0b172a"
+textColor = "#f8fafc"
+font = "sans serif"

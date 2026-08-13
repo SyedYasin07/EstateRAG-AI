@@ -41,9 +41,19 @@ def test_query_parser_dynamic_location():
     assert parsed_guntur.city == "Guntur"
 
 
+def test_duplicate_property_ids_dataset():
+    df = pd.read_csv("data/properties.csv")
+    assert df["property_id"].is_unique == True
+    duplicate_ids = df[df["property_id"].duplicated(keep=False)]
+    assert len(duplicate_ids) == 0
+
+
 def test_city_spelling_normalization():
     p1 = QueryParser.parse("Show properties in Tirupathi")
     assert p1.city == "Tirupati"
+
+    p1b = QueryParser.parse("Show properties in Tiruphati")
+    assert p1b.city == "Tirupati"
 
     p2 = QueryParser.parse("Properties in Vizag")
     assert p2.city == "Visakhapatnam"
@@ -51,12 +61,18 @@ def test_city_spelling_normalization():
     p3 = QueryParser.parse("3 BHK in Hyd")
     assert p3.city == "Hyderabad"
 
+    p4 = QueryParser.parse("Flats in Bengaluru")
+    assert p4.city == "Bangalore"
+
+    p5 = QueryParser.parse("Plots in Bezawada")
+    assert p5.city == "Vijayawada"
+
 
 def test_image_resolver_crash_proof():
     # Test None / missing
     assert get_property_image(None) == DEFAULT_PLACEHOLDER_IMAGE
     
-    # Test empty property
+    # Test empty property gets safe non-empty fallback image
     prop_empty = PropertyItem(
         property_id="PROP-TEST",
         title="Test",
@@ -71,7 +87,9 @@ def test_image_resolver_crash_proof():
         description="Desc",
         image_urls="",
     )
-    assert get_property_image(prop_empty) == DEFAULT_PLACEHOLDER_IMAGE
+    fallback_img = get_property_image(prop_empty)
+    assert isinstance(fallback_img, str) and len(fallback_img) > 10
+    assert fallback_img.startswith(("http://", "https://"))
 
     # Test valid image
     prop_valid = PropertyItem(

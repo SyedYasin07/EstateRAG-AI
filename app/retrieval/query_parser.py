@@ -70,25 +70,70 @@ class QueryParser:
         if bath_match:
             parsed.bathrooms = int(bath_match.group(1))
 
-        # 3. Extract Budget (Lakhs & Crores)
-        # e.g., under 70 lakhs, below 1.5 crore, budget 80l, under ₹70 lakhs, < 70 lakhs
-        cr_under = re.search(r"(?:under|below|less than|within|budget of|<=|<|upto)\s*₹?\s*(\d+(?:\.\d+)?)\s*(?:cr|crore|crores)", q_lower)
-        if cr_under:
-            parsed.max_price_lakhs = float(cr_under.group(1)) * 100.0
+        # 3. Extract Budget (Lakhs & Crores, Thousands, K, Raw Numbers, Ranges)
+        def amount_to_lakhs(val_str: str, unit_str: str = "") -> float:
+            val = float(val_str.replace(",", ""))
+            u = unit_str.lower().strip()
+            if u in ["k", "thousand", "thousands"]:
+                return (val * 1000.0) / 100000.0  # 20k -> 0.2 Lakhs
+            elif u in ["cr", "crore", "crores"]:
+                return val * 100.0  # 1.5 cr -> 150.0 Lakhs
+            elif u in ["lakh", "lakhs", "lacs", "lac", "l"]:
+                return val  # 2 lakh -> 2.0 Lakhs
+            else:
+                if val >= 1000.0:
+                    return val / 100000.0  # 20000 -> 0.2 Lakhs
+                else:
+                    return val  # 50 -> 50.0 Lakhs
 
-        lakh_under = re.search(r"(?:under|below|less than|within|budget of|<=|<|upto)\s*₹?\s*(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|lacs|lac|l)", q_lower)
-        if lakh_under:
-            parsed.max_price_lakhs = float(lakh_under.group(1))
+        # 3a. Check Ranges: "between X and Y", "X to Y", "X - Y"
+        range_match = re.search(
+            r"(?:between|from)?\s*(?:rs\.?\s*)?₹?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|thousand|thousands|lakh|lakhs|lacs|lac|l|cr|crore|crores)?\s*(?:and|to|-)\s*(?:rs\.?\s*)?₹?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|thousand|thousands|lakh|lakhs|lacs|lac|l|cr|crore|crores)?",
+            q_lower
+        )
+        if range_match:
+            v1_str, u1_str, v2_str, u2_str = (
+                range_match.group(1),
+                range_match.group(2) or "",
+                range_match.group(3),
+                range_match.group(4) or "",
+            )
+            if not u1_str and u2_str:
+                u1_str = u2_str
+            l1 = amount_to_lakhs(v1_str, u1_str)
+            l2 = amount_to_lakhs(v2_str, u2_str)
+            parsed.min_price_lakhs = min(l1, l2)
+            parsed.max_price_lakhs = max(l1, l2)
 
-        if not parsed.max_price_lakhs:
-            # Check implicit "70 lakhs" or "₹70L"
-            implicit_lakh = re.search(r"₹?\s*(\d+(?:\.\d+)?)\s*(?:lakhs|lakh|lacs)\b", q_lower)
-            if implicit_lakh and ("under" in q_lower or "budget" in q_lower or "within" in q_lower or "below" in q_lower):
-                parsed.max_price_lakhs = float(implicit_lakh.group(1))
+        # 3b. Maximum Budget: "under X", "below X", "less than X", "within X", "budget of X", "upto X", "<= X", "< X"
+        if parsed.max_price_lakhs is None:
+            max_match = re.search(
+                r"(?:under|below|less than|within|budget of|upto|<=|<|max budget of|maximum|budget)\s*(?:rs\.?\s*)?₹?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|thousand|thousands|lakh|lakhs|lacs|lac|l|cr|crore|crores)?",
+                q_lower
+            )
+            if max_match:
+                v_str, u_str = max_match.group(1), max_match.group(2) or ""
+                parsed.max_price_lakhs = amount_to_lakhs(v_str, u_str)
 
-        lakh_above = re.search(r"(?:above|more than|greater than|>=|>)\s*₹?\s*(\d+(?:\.\d+)?)\s*(?:lakh|lakhs|lacs|lac|l)", q_lower)
-        if lakh_above:
-            parsed.min_price_lakhs = float(lakh_above.group(1))
+        # 3c. Minimum Budget: "above X", "more than X", "greater than X", "over X", ">= X", "> X", "minimum"
+        if parsed.min_price_lakhs is None:
+            min_match = re.search(
+                r"(?:above|more than|greater than|over|>=|>|min budget of|minimum)\s*(?:rs\.?\s*)?₹?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|thousand|thousands|lakh|lakhs|lacs|lac|l|cr|crore|crores)?",
+                q_lower
+            )
+            if min_match:
+                v_str, u_str = min_match.group(1), min_match.group(2) or ""
+                parsed.min_price_lakhs = amount_to_lakhs(v_str, u_str)
+
+        # 3d. Implicit standalone budget: e.g. "20k apartment", "₹20k flat", "2 lakh property", "50000 budget"
+        if parsed.max_price_lakhs is None and parsed.min_price_lakhs is None:
+            implicit_match = re.search(
+                r"(?:rs\.?\s*)?₹?\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|thousand|thousands|lakh|lakhs|lacs|lac|cr|crore|crores)\b",
+                q_lower
+            )
+            if implicit_match:
+                v_str, u_str = implicit_match.group(1), implicit_match.group(2)
+                parsed.max_price_lakhs = amount_to_lakhs(v_str, u_str)
 
         # 4. Extract Area in Sq.Ft
         sqft_above = re.search(r"(?:larger than|more than|above|greater than|>|>=)\s*(\d+)\s*(?:sq\.?ft|sqft|square feet)", q_lower)
@@ -159,7 +204,7 @@ class QueryParser:
 
         # 6. Extract Property Type
         for key, val in KNOWN_TYPES.items():
-            if re.search(r"\b" + re.escape(key) + r"\b", q_lower):
+            if re.search(r"\b" + re.escape(key) + r"s?\b", q_lower):
                 parsed.property_type = val
                 break
 
